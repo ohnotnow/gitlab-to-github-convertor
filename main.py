@@ -48,7 +48,7 @@ def main(gitlab_yaml: str, max_attempts: int = 3):
         f.write(implementation)
         print(f"Output written to {output_filename}")
     if exit_code != True:
-        print("## Validation failed after 3 attempts")
+        print(f"## Validation failed after {attempts} attempts")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
