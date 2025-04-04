@@ -45,4 +45,4 @@ uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml [--max-attempts 3]
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the MIT License. See the `LICENCE.md` file for details.
