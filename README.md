@@ -21,18 +21,17 @@ A Python-based tool that uses OpenAI language models to automate the conversion 
 #### MacOS / Ubuntu / Windows
 ```bash
 # Clone the repository
-git clone <REPO_URL>
+git clone https://github.com/ohnotnow/gitlab-to-github-convertor.git
 cd gitlab-to-github-convertor
 
 # Install dependencies using uv
 uv sync
 ```
 
-> Replace `<REPO_URL>` with the actual repository URL once available.
-
 ## Usage
 
 ```bash
+export OPENAI_API_KEY=sk-......
 uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml [--max-attempts 3]
 ```
 
