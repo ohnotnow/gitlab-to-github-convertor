@@ -60,8 +60,9 @@ def main(gitlab_yaml: str, max_attempts: int = 3, debug_file: str | None = None,
         logger.debug(f"Error message: {error_message}")
         implementation, cost = worker_agent.run(
             gitlab_yaml=gitlab_yaml,
-            user_thoughts=plan + error_guidence,
+            user_thoughts=plan,
             error_message=error_message,
+            error_guidence=error_guidence,
             previous_attempt=previous_implementation
         )
         quick_fix_agent = QuickFixAgent()
@@ -125,8 +126,8 @@ def main(gitlab_yaml: str, max_attempts: int = 3, debug_file: str | None = None,
                 error_guidence=error_guidence
             )
             total_cost += cost
-            # logger.debug(f"Error guidence: {error_guidence}")
-            # logger.debug("-" * 100)
+            logger.debug(f"Error guidence: {error_guidence}")
+            logger.debug("-" * 100)
             if not isinstance(worker_agent, DebugAgent):
                 logger.debug(f"Switching to debug agent")
                 worker_agent = DebugAgent(model_name=model, provider=provider)

@@ -12,6 +12,13 @@ You are an expert GitHub Actions workflow debugger. Your task is to fix the lint
 {{ error_message }}
 </errors-from-previous-attempt>
 
+{% if error_guidence %}
+<error-guidence>
+{{ error_guidence }}
+</error-guidence>
+{% endif %}
+
+
 INSTRUCTIONS:
 1. Focus EXCLUSIVELY on correcting the actionlint errors identified above
 2. Make minimal changes to fix each error while preserving the workflow's functionality
@@ -20,7 +27,6 @@ INSTRUCTIONS:
    - Invalid GitHub Actions syntax
    - Incorrect expressions or context references
    - Shell command formatting and escaping
-
 4. For each error you fix, add a brief comment in the YAML explaining the correction
 
 OUTPUT REQUIREMENTS:

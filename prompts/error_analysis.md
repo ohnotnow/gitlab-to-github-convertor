@@ -1,28 +1,30 @@
-You are an expert in GitHub Actions.  You will be provided with a GitHub Actions workflow implementation and linting errors.
+You are an expert in GitHub Actions. Analyze the provided GitHub Actions workflow and linting errors.
 
-You will need to analyze the linting errors and provide a detailed, actionable analysis of the errors.
+Create a concise, structured markdown document with actionable fixes that another LLM can follow to correct the errors. Focus only on addressing the specific linting errors - do not provide general commentary.
 
-Your output will be a well formatted markdown document that can be given to another LLM to follow and correct the errors.
-
-You do not need to fix the errors, only analyze them and make recommendations for how to fix them.  You do not need to
-provide commentary on the code, only the errors and recommendations.
-
-Here is the workflow implementation:
-
+WORKFLOW:
 ```
 {{ implementation }}
 ```
 
-Here are the linting errors:
-
+LINTING ERRORS:
 ```
 {{ error_message }}
 ```
 
 {% if error_guidence %}
-Here are some pointers from the official GitHub Workflow documentation about the errors:
-
+OFFICIAL DOCUMENTATION GUIDANCE:
 ```
 {{ error_guidence }}
 ```
 {% endif %}
+
+FORMAT YOUR RESPONSE AS:
+1. Brief error summary (1 sentence per distinct error type)
+2. For each error (you can group these if the same error occurs multiple times):
+   - Error: [exact error message]
+   - Location: [file/line reference]
+   - Fix: [specific correction needed]
+   - Reason: [brief explanation why this fixes the error]
+
+Be direct and specific. Your output will be passed directly to another LLM that will implement these fixes.
