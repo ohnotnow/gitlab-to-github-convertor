@@ -1,3 +1,5 @@
 output_*
 __pycache*
 agents/__pycache*
+q.py
+debug.log

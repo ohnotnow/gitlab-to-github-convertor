@@ -17,10 +17,12 @@ class QuickFixAgent():
 
     def fix_heredoc_indentation(self, yaml_text: str) -> str:
         """
-        Fixes the indentation of heredoc closing delimiters in a YAML string.
+        Fixes the indentation of heredoc closing delimiters in a YAML shell string.
         For each heredoc block (e.g. a line containing <<'EOF' or <<EOF),
         it will search for the closing delimiter in subsequent lines and adjust its
         indentation to match that of the heredoc start line.
+
+        (It's a very common issue with LLM generated YAML files where they get the alignment wrong.)
 
         Returns the corrected YAML text.
         """

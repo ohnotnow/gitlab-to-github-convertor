@@ -1,6 +1,6 @@
 # GitLab to GitHub Convertor
 
-A Python-based tool that uses OpenAI language models to automate the conversion of GitLab CI/CD configuration files into equivalent GitHub Actions workflows. The conversion process involves multi-stage reasoning and validation to produce a working and standards-compliant result.
+A Python-based tool that uses language models to automate the conversion of GitLab CI/CD configuration files into equivalent GitHub Actions workflows. The conversion process involves multi-stage reasoning and validation to produce a working and standards-compliant result.
 
 ## Features
 
@@ -32,6 +32,7 @@ uv sync
 
 ```bash
 export OPENAI_API_KEY=sk-......
+export OPENROUTER_API_KEY=..... # depending which provider you are using
 uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml [--max-attempts 3]
 ```
 
@@ -42,6 +43,23 @@ uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml [--max-attempts 3]
 ### Output
 - The converted GitHub Actions workflow will be saved as `output_<timestamp>.yml` in the working directory.
 - Console output includes detailed logs for planning, implementation, validation, and total token cost.
+
+### Providers/Models
+
+You can swap between OpenRouter or OpenAI directly by setting a `LLM_PROVIDER` environment variable or passing a `--provider` flag.  You can also specifiy a model name by passing `--model` or setting `LLM_MODEL`.  For example
+
+```bash
+uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml --provider openrouter --model "google/gemini-2.5-pro-preview-03-25"
+
+export LLM_PROVIDER=openai
+export LLM_MODEL="o3-mini"
+uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml
+```
+
+You can see the fallback defaults by running :
+```bash
+uv run main.py --help
+```
 
 ## License
 

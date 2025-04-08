@@ -2,7 +2,12 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from litellm import completion
+from openai import OpenAI
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+import logging
+import os
+
+logger = logging.getLogger('gl2gh')
 
 class DocumentationSummarizer:
     """
@@ -13,40 +18,56 @@ class DocumentationSummarizer:
       - Returns a list of dictionaries for each error with its URL, error message, and summary.
     """
 
-    def __init__(self):
+    def __init__(self, model_name: str = "o3-mini", provider: str = "openai"):
         # Cache to store summaries keyed by (url, error_message)
         self.cache = {}
         self.env = Environment(
             loader=FileSystemLoader("prompts"),
             autoescape=select_autoescape()
         )
+        self.model_name = model_name
+        self.provider = provider
 
     def fetch_content(self, url: str) -> str:
         """
         Fetches and extracts text content from the given URL using requests and BeautifulSoup.
         """
         try:
+            logger.debug(f"Fetching content from {url}")
             response = requests.get(url, timeout=10)
             response.raise_for_status()  # Ensure we catch HTTP errors
             soup = BeautifulSoup(response.text, 'html.parser')
             return soup.get_text(separator='\n', strip=True)
         except Exception as e:
+            logger.error(f"Error fetching content: {str(e)}")
             return f"Error fetching content: {str(e)}"
 
     def summarize(self, error_message: str, content: str, implementation: str) -> str:
-        """
-        Stub function to simulate a call to a smaller LLM.
-        Replace this with your actual LLM call to generate a summary based on the error_message and content.
-        """
         template = self.env.get_template("docs_summary.md")
         prompt = template.render(error_message=error_message, page_content=content, workflow_yaml=implementation)
-        response = completion(
-            model="o3-mini",
-            reasoning_effort="high",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
+        if self.provider == "openai":
+            logger.debug(f"Summarizing docs content with OpenAI")
+            response = completion(
+                model=self.model_name,
+                reasoning_effort="high",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+        elif self.provider == "openrouter":
+            logger.debug(f"Summarizing docs content with OpenRouter")
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=os.getenv("OPENROUTER_API_KEY"),
+            )
+            response = client.chat.completions.create(
+                model=f"openrouter/{self.model_name}",
+                messages=[{"role": "user", "content": prompt}],
+            )
+        else:
+            raise ValueError(f"Invalid provider: {self.provider}")
+
+        logger.debug(f"Summarized docs content: {response.choices[0].message.content}")
         return response.choices[0].message.content
 
     def process_errors(self, lint_errors: str, implementation: str, docs: list) -> list:
@@ -63,49 +84,44 @@ class DocumentationSummarizer:
         for doc in docs:
             self.cache[(doc["url"], doc["error"])] = doc["summary"]
 
+        logger.debug(f"Lint errors: {lint_errors}")
+        logger.debug("-" * 100)
         # Regex to extract error messages and associated URLs.
         pattern = r'^\d+:\d+:\s+(.*?)\s+see\s+(https?://[^\s]+)'
         error_details = re.findall(pattern, lint_errors, re.MULTILINE)
+        logger.debug(f"Error details: {error_details}")
+        logger.debug("-" * 100)
+        # make error_details unique
+        error_details = list(set(error_details))
+        logger.debug(f"Unique error details: {error_details}")
+        logger.debug("-" * 100)
 
         results = []
         for error_message, url in error_details:
             error_message = error_message.strip()
+            if not url.startswith("https://"):
+                temp = url
+                url = error_message
+                error_message = temp
             key = (url, error_message)
 
             if key not in self.cache:
+                logger.debug(f"- Getting new docs summary for {url}")
                 content = self.fetch_content(url)
                 summary = self.summarize(error_message, content, implementation)
                 self.cache[key] = summary
             else:
+                logger.debug(f"- Using cached summary for {url}")
                 summary = self.cache[key]
-
             results.append({
                 "url": url,
                 "error": error_message,
                 "summary": summary
             })
+            docs.append({
+                "url": url,
+                "error": error_message,
+                "summary": summary
+            })
 
-        return results
-
-# Example usage:
-if __name__ == "__main__":
-    lint_errors = """42:18: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
-       |
-    42 |       image: ${{ env.QA_IMAGE_NAME }}
-       |                  ^~~~~~~~~~~~~~~~~
-    80:18: context "secrets" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
-       |
-    80 |       image: ${{ secrets.CI_REGISTRY }}/${{ github.repository }}:qa-${{ github.sha }}
-       |                  ^~~~~~~~~~~~~~~~~~~
-    97:18: context "secrets" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
-       |
-    97 |       image: ${{ secrets.CI_REGISTRY }}/${{ github.repository }}:qa-${{ github.sha }}
-       |                  ^~~~~~~~~~~~~~~~~~~
-    111:18: context "secrets" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]"""
-
-    doc_sum = DocumentationSummarizer()
-    processed_errors = doc_sum.process_errors(lint_errors)
-
-    # Print the result for each error
-    for item in processed_errors:
-        print(item)
+        return results, docs
