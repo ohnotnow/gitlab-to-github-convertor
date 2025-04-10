@@ -2,10 +2,9 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from litellm import completion
-from openai import OpenAI
+import litellm
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import logging
-import os
 
 logger = logging.getLogger('gl2gh')
 
@@ -28,6 +27,9 @@ class DocumentationSummarizer:
         self.model_name = model_name
         self.provider = provider
 
+    def get_full_model_name(self) -> str:
+        return f"{self.provider}/{self.model_name}"
+
     def fetch_content(self, url: str) -> str:
         """
         Fetches and extracts text content from the given URL using requests and BeautifulSoup.
@@ -45,27 +47,12 @@ class DocumentationSummarizer:
     def summarize(self, error_message: str, content: str, implementation: str) -> str:
         template = self.env.get_template("docs_summary.md")
         prompt = template.render(error_message=error_message, page_content=content, workflow_yaml=implementation)
-        if self.provider == "openai":
-            logger.debug(f"Summarizing docs content with OpenAI")
-            response = completion(
-                model=self.model_name,
-                reasoning_effort="high",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-        elif self.provider == "openrouter":
-            logger.debug(f"Summarizing docs content with OpenRouter")
-            client = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
-                api_key=os.getenv("OPENROUTER_API_KEY"),
-            )
-            response = client.chat.completions.create(
-                model=f"openrouter/{self.model_name}",
-                messages=[{"role": "user", "content": prompt}],
-            )
-        else:
-            raise ValueError(f"Invalid provider: {self.provider}")
+        logger.debug(f"Summarizing docs content with {self.get_full_model_name()}")
+        litellm.drop_params = True
+        response = completion(
+            model=self.get_full_model_name(),
+            messages=[{"role": "user", "content": prompt}],
+        )
 
         logger.debug(f"Summarized docs content: {response.choices[0].message.content}")
         return response.choices[0].message.content

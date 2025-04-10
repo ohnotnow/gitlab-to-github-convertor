@@ -156,9 +156,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--gitlab-yaml", type=str, required=True, help="Path to the GitLab CI/CD YAML file")
     parser.add_argument("--max-attempts", type=int, default=3, help="Maximum number of attempts to make")
-    parser.add_argument("--debug-file", type=str, help="Path to a file for detailed debug logging")
-    parser.add_argument("--provider", type=str, default=os.getenv("LLM_PROVIDER", "openrouter"), help="LLM provider to use")
-    parser.add_argument("--model", type=str, default=os.getenv("LLM_MODEL", "openrouter/quasar-alpha"), help="LLM model to use")
+    parser.add_argument("--debug-file", type=str, required=False, help="Path to a file for detailed debug logging")
+    parser.add_argument("--provider", type=str, required=False, default=os.getenv("LLM_PROVIDER", "openrouter"), help="LLM provider to use")
+    parser.add_argument("--model", type=str, required=False, default=os.getenv("LLM_MODEL", "openrouter/quasar-alpha"), help="LLM model to use")
     args = parser.parse_args()
 
     with open(args.gitlab_yaml, "r") as f:

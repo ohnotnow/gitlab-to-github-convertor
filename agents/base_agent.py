@@ -26,15 +26,18 @@ class BaseAgent:
         logger.debug(f"Rendered prompt from {self.prompt_file}:\n{rendered}")  # log only first 500 chars
         return rendered
 
+    def get_full_model_name(self) -> str:
+        return f"{self.provider}/{self.model_name}"
+
     def run(self, **kwargs) -> tuple[str, float]:
         prompt = self.get_prompt(**kwargs)
         logger.debug(f"Running agent with provider={self.provider}")
         logger.debug(f"Prompt:\n{prompt}")
 
-        if self.provider == "openai":
-            response, cost = self.get_openai_response(prompt)
-        else:
-            response, cost = self.get_openrouter_response(prompt)
+        full_model_name = self.get_full_model_name()
+        logger.debug(f"Using model: {full_model_name}")
+
+        response, cost = self.get_openrouter_response(prompt)
 
         logger.debug(f"LLM response (first 200 chars): {response[:200]}")
         logger.debug(f"Cost for response: US${cost}")
@@ -42,28 +45,16 @@ class BaseAgent:
 
     def get_openrouter_response(self, prompt: str) -> tuple[str, float]:
         logger.debug("Calling OpenRouter API")
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=os.getenv("OPENROUTER_API_KEY"),
-        )
-        response = client.chat.completions.create(
-            model=f"openrouter/{self.model_name}",
-            messages=[{"role": "user", "content": prompt}],
-        )
-
-        # Temporarily hardcoded cost
-        cost = 0
-        logger.debug("Using placeholder cost=0 for OpenRouter — replace with actual cost once available.")
-        return response.choices[0].message.content, cost
-
-    def get_openai_response(self, prompt: str) -> tuple[str, float]:
-        logger.debug("Calling OpenAI via LiteLLM")
+        full_model_name = self.get_full_model_name()
+        logger.debug(f"Using model: {full_model_name}")
         litellm.drop_params = True
         response = completion(
-            model=self.model_name,
-            reasoning_effort="high",
+            model=full_model_name,
             messages=[{"role": "user", "content": prompt}],
         )
         cost = response._hidden_params.get("response_cost", 0.0)
-        logger.debug(f"LiteLLM cost: US${cost}")
+        if not cost:
+            # sometimes litellm returns None for cost - so we catch that
+            cost = 0.0
+        logger.debug(f"OpenRouter cost: US${cost}")
         return response.choices[0].message.content, cost
