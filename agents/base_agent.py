@@ -48,10 +48,14 @@ class BaseAgent:
         full_model_name = self.get_full_model_name()
         logger.debug(f"Using model: {full_model_name}")
         litellm.drop_params = True
-        response = completion(
-            model=full_model_name,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        try:
+            response = completion(
+                model=full_model_name,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        except Exception as e:
+            logger.error(f"Error calling OpenRouter API: {e}")
+            raise e
         cost = response._hidden_params.get("response_cost", 0.0)
         if not cost:
             # sometimes litellm returns None for cost - so we catch that

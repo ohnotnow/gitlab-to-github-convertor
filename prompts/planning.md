@@ -11,6 +11,8 @@ Perform a comprehensive analysis of this pipeline by addressing each of the foll
    - Identify any job dependencies, inheritance patterns, or includes
    - Note GitLab-specific features that require GitHub Actions alternatives
    - Specify exact GitHub Actions workflow structure to replicate this pipeline
+   - Note places it may be possible to DRY-up the workflow
+   - Also note if the original workflow is manually performing a task which could be done by a common action and pulled in via `uses:`
 
 2. SYNTAX CONVERSION:
    - List all YAML syntax elements requiring special handling
