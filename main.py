@@ -233,9 +233,8 @@ class GitLabToGitHubConverter:
                         self.switch_to_debug_agent_if_needed()
 
         # Save final output
-        if passes:
-            self.save_implementation(implementation, attempts, is_final=True)
-            self.save_quality_check(quality_check)
+        self.save_implementation(implementation, attempts, is_final=True)
+        self.save_quality_check(quality_check)
 
         # Display results
         logger.info(f"Total cost: US${self.total_cost}")

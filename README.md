@@ -8,6 +8,7 @@ A Python-based tool that uses language models to automate the conversion of GitL
 - **Implementation Agent**: Translates the GitLab YAML into a GitHub Actions workflow.
 - **Quick Fix Agent**: Applies immediate improvements or corrections to the initial implementation.
 - **Validation Agent**: Uses `actionlint` to verify the generated workflow. Up to 3 validation attempts are performed with automatic error-driven refinement.
+- **Quality Agent**: Reports on the quality of any yaml which passes linting to check it implements the original intention of the GitLab file
 
 ## Installation
 
@@ -33,15 +34,17 @@ uv sync
 ```bash
 export OPENAI_API_KEY=sk-......
 export OPENROUTER_API_KEY=..... # depending which provider you are using
-uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml [--max-attempts 3]
+uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml [--max-attempts 3] [--thorough]
 ```
 
 ### Arguments
 - `--gitlab-yaml`: Path to the GitLab CI YAML file to convert (**required**)
 - `--max-attempts`: Maximum number of attempts for fixing invalid workflows (default: 3)
+- `--thorough`: If the final quality check fails, retry the rewrite
 
 ### Output
 - The converted GitHub Actions workflow will be saved as `output_<timestamp>.yml` in the working directory.
+- The quality check output report is saved as `output_<timetamp>_quality_check.md`
 - Console output includes detailed logs for planning, implementation, validation, and total token cost.
 
 ### Providers/Models
