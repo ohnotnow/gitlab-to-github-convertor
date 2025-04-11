@@ -10,7 +10,7 @@ from agents.quick_fix import QuickFixAgent
 from agents.debug import DebugAgent
 from agents.docs import DocumentationSummarizer
 from agents.error_analyst import ErrorAnalysisAgent
-
+from agents.quality import QualityAgent
 logger = logging.getLogger("gl2gh")
 
 
@@ -35,11 +35,12 @@ def setup_logging(debug_filename: str | None):
 
 class GitLabToGitHubConverter:
     def __init__(self, gitlab_yaml: str, max_attempts: int = 3, debug_file: str | None = None,
-                 provider: str = "openrouter", model: str = "openrouter/quasar-alpha"):
+                 provider: str = "openrouter", model: str = "openrouter/quasar-alpha", thorough: bool = False):
         self.gitlab_yaml = gitlab_yaml
         self.max_attempts = max_attempts
         self.provider = provider
         self.model = model
+        self.thorough = thorough
         self.total_cost = 0
         self.output_basename = f"output_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.output_results = []
@@ -53,6 +54,7 @@ class GitLabToGitHubConverter:
         self.docs_agent = DocumentationSummarizer(model_name=model, provider=provider)
         self.validation_agent = ValidationAgent()
         self.quick_fix_agent = QuickFixAgent()
+        self.quality_agent = QualityAgent()
 
     def create_implementation_plan(self):
         """Generate a plan for implementation using the planning agent"""
@@ -85,6 +87,14 @@ class GitLabToGitHubConverter:
         with open(output_filename, "w") as f:
             f.write(implementation)
             logger.info(f"Output written to {output_filename}")
+        return output_filename
+
+    def save_quality_check(self, quality_check: str):
+        """Save the quality check to a file"""
+        output_filename = f"{self.output_basename}_quality_check.md"
+        with open(output_filename, "w") as f:
+            f.write(quality_check)
+            logger.info(f"Quality check written to {output_filename}")
         return output_filename
 
     def validate_implementation(self, implementation: str, attempt: int):
@@ -163,6 +173,14 @@ class GitLabToGitHubConverter:
         for result in self.output_results:
             logger.info(f"  - {result['output_filename']} ({result['validation_errors']} errors)")
 
+    def quality_check_passed(self, quality_check: str):
+        """Check if the quality check passed"""
+        lines = quality_check.lower().split("\n")
+        for line in lines:
+            if "verdict" in line and "pass" in line:
+                return True
+        return False
+
     def run(self):
         """Main execution flow of the converter"""
         # Create implementation plan
@@ -171,12 +189,14 @@ class GitLabToGitHubConverter:
         # Implementation and validation loop
         attempts = 0
         passes = False
+        quality_check_passed = False
         previous_implementation = ""
         error_message = ""
         error_guidance = ""
+        quality_check = ""
         docs = []
 
-        while not passes and attempts < self.max_attempts:
+        while not passes and not (quality_check_passed and self.thorough) and attempts < self.max_attempts:
             attempts += 1
             logger.info(f"Implementing (attempt {attempts})")
             logger.debug(f"Error message: {error_message}")
@@ -196,10 +216,26 @@ class GitLabToGitHubConverter:
                 previous_implementation = implementation
                 error_guidance, docs = self.process_errors(error_message, implementation, docs)
                 self.switch_to_debug_agent_if_needed()
+            else:
+                # Quality check
+                quality_check, cost = self.quality_agent.run(gitlab_yaml=self.gitlab_yaml, github_yaml=implementation)
+                self.total_cost += cost
+                logger.debug(f"Quality check: {quality_check}")
+                quality_check_passed = self.quality_check_passed(quality_check)
+                if quality_check_passed:
+                    logger.info("Quality check passed")
+                else:
+                    logger.info("Quality check failed")
+                    if self.thorough:
+                        logger.info("Regenerating GitHub YAML")
+                        previous_implementation = implementation
+                        error_guidance = quality_check
+                        self.switch_to_debug_agent_if_needed()
 
         # Save final output
         if passes:
             self.save_implementation(implementation, attempts, is_final=True)
+            self.save_quality_check(quality_check)
 
         # Display results
         logger.info(f"Total cost: US${self.total_cost}")
@@ -209,14 +245,15 @@ class GitLabToGitHubConverter:
 
 
 def main(gitlab_yaml: str, max_attempts: int = 3, debug_file: str | None = None,
-         provider: str = "openrouter", model: str = "openrouter/quasar-alpha"):
+         provider: str = "openrouter", model: str = "openrouter/quasar-alpha", thorough: bool = False):
     """Main entry point for the script"""
     converter = GitLabToGitHubConverter(
         gitlab_yaml=gitlab_yaml,
         max_attempts=max_attempts,
         debug_file=debug_file,
         provider=provider,
-        model=model
+        model=model,
+        thorough=thorough
     )
 
     exit_code = converter.run()
@@ -230,9 +267,10 @@ if __name__ == "__main__":
     parser.add_argument("--debug-file", type=str, required=False, help="Path to a file for detailed debug logging")
     parser.add_argument("--provider", type=str, required=False, default=os.getenv("LLM_PROVIDER", "openrouter"), help="LLM provider to use")
     parser.add_argument("--model", type=str, required=False, default=os.getenv("LLM_MODEL", "openrouter/quasar-alpha"), help="LLM model to use")
+    parser.add_argument("--thorough", action="store_true", required=False, default=False, help="Regenerate the GitHub YAML if the quality check fails")
     args = parser.parse_args()
 
     with open(args.gitlab_yaml, "r") as f:
         gitlab_contents = f.read()
 
-    main(gitlab_contents, args.max_attempts, args.debug_file, args.provider, args.model)
+    main(gitlab_contents, args.max_attempts, args.debug_file, args.provider, args.model, args.thorough)
