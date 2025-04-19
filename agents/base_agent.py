@@ -1,10 +1,7 @@
 import logging
-import os
-import requests
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import litellm
 from litellm import completion
-from openai import OpenAI
 
 logger = logging.getLogger('gl2gh')
 
@@ -18,7 +15,7 @@ class BaseAgent:
             loader=FileSystemLoader("prompts"),
             autoescape=select_autoescape()
         )
-        logger.debug(f"Initialized BaseAgent with model={self.model_name}, provider={self.provider}")
+        logger.debug(f"Initialized {self.__class__.__name__} with model={self.model_name}, provider={self.provider}")
 
     def get_prompt(self, **kwargs) -> str:
         template = self.env.get_template(self.prompt_file)
@@ -37,14 +34,14 @@ class BaseAgent:
         full_model_name = self.get_full_model_name()
         logger.debug(f"Using model: {full_model_name}")
 
-        response, cost = self.get_openrouter_response(prompt)
+        response, cost = self.get_llm_response(prompt)
 
         logger.debug(f"LLM response (first 200 chars): {response[:200]}")
         logger.debug(f"Cost for response: US${cost}")
         return response, cost
 
-    def get_openrouter_response(self, prompt: str) -> tuple[str, float]:
-        logger.debug("Calling OpenRouter API")
+    def get_llm_response(self, prompt: str) -> tuple[str, float]:
+        logger.debug("Calling LLM API")
         full_model_name = self.get_full_model_name()
         logger.debug(f"Using model: {full_model_name}")
         litellm.drop_params = True
@@ -54,11 +51,11 @@ class BaseAgent:
                 messages=[{"role": "user", "content": prompt}],
             )
         except Exception as e:
-            logger.error(f"Error calling OpenRouter API: {e}")
+            logger.error(f"Error calling LLM API: {e}")
             raise e
         cost = response._hidden_params.get("response_cost", 0.0)
         if not cost:
             # sometimes litellm returns None for cost - so we catch that
             cost = 0.0
-        logger.debug(f"OpenRouter cost: US${cost}")
+        logger.debug(f"LLM cost: US${cost}")
         return response.choices[0].message.content, cost

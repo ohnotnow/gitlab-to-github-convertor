@@ -40,26 +40,28 @@ def setup_logging(debug_filename: str | None):
 
 class GitLabToGitHubConverter:
     def __init__(self, gitlab_yaml: str, max_attempts: int = 3, debug_file: str | None = None,
-                 provider: str = "openrouter", model: str = "openrouter/quasar-alpha", thorough: bool = False):
+                 provider: str = "openrouter", thinking_model: str = "openai/o4-mini", implementation_model: str = "openai/o4-mini", thorough: bool = False):
         self.gitlab_yaml = gitlab_yaml
         self.max_attempts = max_attempts
         self.provider = provider
-        self.model = model
+        self.thinking_model = thinking_model
+        self.implementation_model = implementation_model
         self.thorough = thorough
         self.total_cost = 0
         self.output_basename = f"output_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.output_results = []
 
         setup_logging(debug_file)
-        logger.info(f"Using model: {model} ({provider})")
+        logger.info(f"Using thinking model: {thinking_model} ({provider})")
+        logger.info(f"Using implementation model: {implementation_model} ({provider})")
 
         # Initialize agents
-        self.planner = PlanningAgent(model_name=model, provider=provider)
-        self.worker_agent = ImplementationAgent(model_name=model, provider=provider)
-        self.docs_agent = DocumentationSummarizer(model_name=model, provider=provider)
+        self.planner = PlanningAgent(model_name=thinking_model, provider=provider)
+        self.worker_agent = ImplementationAgent(model_name=implementation_model, provider=provider)
+        self.docs_agent = DocumentationSummarizer(model_name=thinking_model, provider=provider)
         self.validation_agent = ValidationAgent()
         self.quick_fix_agent = QuickFixAgent()
-        self.quality_agent = QualityAgent()
+        self.quality_agent = QualityAgent(model_name=thinking_model, provider=provider)
 
     def create_implementation_plan(self):
         """Generate a plan for implementation using the planning agent"""
@@ -154,7 +156,7 @@ class GitLabToGitHubConverter:
 
         # Analyze errors for additional guidance
         logger.info("Analyzing errors")
-        analysis_agent = ErrorAnalysisAgent(model_name=self.model, provider=self.provider)
+        analysis_agent = ErrorAnalysisAgent(model_name=self.thinking_model, provider=self.provider)
         error_guidance, cost = analysis_agent.run(
             error_message=error_message,
             implementation=implementation,
@@ -169,7 +171,7 @@ class GitLabToGitHubConverter:
         """Switch to debug agent if not already using it"""
         if not isinstance(self.worker_agent, DebugAgent):
             logger.debug("Switching to debug agent")
-            self.worker_agent = DebugAgent(model_name=self.model, provider=self.provider)
+            self.worker_agent = DebugAgent(model_name=self.implementation_model, provider=self.provider)
 
     def display_results(self):
         """Display the results of all attempts"""
@@ -249,14 +251,15 @@ class GitLabToGitHubConverter:
 
 
 def main(gitlab_yaml: str, max_attempts: int = 3, debug_file: str | None = None,
-         provider: str = "openrouter", model: str = "openrouter/quasar-alpha", thorough: bool = False):
+         provider: str = "openrouter", thinking_model: str = "openai/o4-mini", implementation_model: str = "openai/o4-mini", thorough: bool = False):
     """Main entry point for the script"""
     converter = GitLabToGitHubConverter(
         gitlab_yaml=gitlab_yaml,
         max_attempts=max_attempts,
         debug_file=debug_file,
         provider=provider,
-        model=model,
+        thinking_model=thinking_model,
+        implementation_model=implementation_model,
         thorough=thorough
     )
 
@@ -265,16 +268,18 @@ def main(gitlab_yaml: str, max_attempts: int = 3, debug_file: str | None = None,
 
 
 if __name__ == "__main__":
+    default_model = "o4-mini"
     parser = argparse.ArgumentParser()
     parser.add_argument("--gitlab-yaml", type=str, required=True, help="Path to the GitLab CI/CD YAML file")
     parser.add_argument("--max-attempts", type=int, default=3, help="Maximum number of attempts to make")
     parser.add_argument("--debug-file", type=str, required=False, help="Path to a file for detailed debug logging")
-    parser.add_argument("--provider", type=str, required=False, default=os.getenv("LLM_PROVIDER", "openrouter"), help="LLM provider to use")
-    parser.add_argument("--model", type=str, required=False, default=os.getenv("LLM_MODEL", "openai/o4-mini"), help="LLM model to use")
+    parser.add_argument("--provider", type=str, required=False, default=os.getenv("LLM_PROVIDER", "openai"), help="LLM provider to use")
+    parser.add_argument("--thinking-model", type=str, required=False, default=os.getenv("LLM_THINKING_MODEL", default_model), help="LLM model to use for thinking")
+    parser.add_argument("--implementation-model", type=str, required=False, default=os.getenv("LLM_IMPLEMENTATION_MODEL", default_model), help="LLM model to use for implementation")
     parser.add_argument("--thorough", action="store_true", required=False, default=False, help="Regenerate the GitHub YAML if the quality check fails")
     args = parser.parse_args()
 
     with open(args.gitlab_yaml, "r") as f:
         gitlab_contents = f.read()
 
-    main(gitlab_contents, args.max_attempts, args.debug_file, args.provider, args.model, args.thorough)
+    main(gitlab_contents, args.max_attempts, args.debug_file, args.provider, args.thinking_model, args.implementation_model, args.thorough)

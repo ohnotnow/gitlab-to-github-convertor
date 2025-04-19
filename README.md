@@ -49,13 +49,14 @@ uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml [--max-attempts 3] [--thorou
 
 ### Providers/Models
 
-You can swap between OpenRouter or OpenAI directly by setting a `LLM_PROVIDER` environment variable or passing a `--provider` flag.  You can also specifiy a model name by passing `--model` or setting `LLM_MODEL`.  For example
+You can swap between OpenRouter or OpenAI directly by setting a `LLM_PROVIDER` environment variable or passing a `--provider` flag.  You can also specifiy a model names by passing `--thinking-model` and/or `--implementation-model` (or setting `LLM_THINKING_MODEL` / `LLM_IMPLEMENTATION_MODEL`.  For example
 
 ```bash
-uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml --provider openrouter --model "google/gemini-2.5-pro-preview-03-25"
+uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml --provider openrouter --thinking-model "google/gemini-2.5-pro-preview-03-25" --implementation-model=google/gemini-2.5-flash-preview
 
 export LLM_PROVIDER=openai
-export LLM_MODEL="o3-mini"
+export LLM_THINKING_MODEL=o4-mini
+export LLM_IMPLEMENTATION_MODEL=gpt-4.1
 uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml
 ```
 
@@ -63,6 +64,9 @@ You can see the fallback defaults by running :
 ```bash
 uv run main.py --help
 ```
+
+The calls to the LLM are made via the [LiteLLM](https://docs.litellm.ai/docs/) package - please check their docs
+for what providers and models are supported.
 
 ## Workflow diagram
 
