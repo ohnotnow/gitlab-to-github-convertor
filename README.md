@@ -64,6 +64,57 @@ You can see the fallback defaults by running :
 uv run main.py --help
 ```
 
+## Workflow diagram
+
+```mermaid
+flowchart TD
+    %% Setup & Planning
+    subgraph Setup_And_Planning["Setup & Planning"]
+        A["Start: Load GitLab YAML and Initialize Agents"]
+        B["Create Implementation Plan using PlanningAgent"]
+    end
+
+    %% Main Loop
+    subgraph Impl_Loop["Implementation & Validation Loop"]
+        direction TB
+        C{"Continue attempts? (Not Passed or Thorough Required)"}
+        D["Generate Implementation via ImplementationAgent"]
+        E["Apply Quick Fix via QuickFixAgent"]
+        F["Save Implementation"]
+        G["Validate with ValidationAgent"]
+    end
+
+    %% Validation Handling
+    subgraph Validation_Outcome["Validation Outcome Handling"]
+        direction TB
+        H{"Validation Passed?"}
+        I["Process Errors using DocsAgent and ErrorAnalysisAgent"]
+        J["Switch to DebugAgent"]
+        K["Quality Check using QualityAgent"]
+        L{"Quality Check Passed?"}
+        M["Switch to DebugAgent (for thorough regen)"]
+    end
+
+    %% Finalization
+    subgraph Final_Steps["Finalization"]
+        N["Save Final Implementation"]
+        O["Save Quality Check"]
+        P["Display Results and Total Cost"]
+        Q{"Return 0 if Passed else 1"}
+    end
+
+    %% Flow Connections
+    A --> B --> C
+    C -->|Yes| D
+    D --> E --> F --> G --> H
+    H -->|No| I --> J --> C
+    H -->|Yes| K --> L
+    L -->|Yes| N
+    L -->|No AND thorough| M --> C
+    L -->|No AND NOT thorough| N
+    C -->|No| N
+    N --> O --> P --> Q
+```
 ## License
 
 This project is licensed under the MIT License. See the `LICENCE.md` file for details.

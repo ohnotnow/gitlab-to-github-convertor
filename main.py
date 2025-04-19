@@ -32,6 +32,11 @@ def setup_logging(debug_filename: str | None):
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
+    if os.getenv("LOG_ERRORS"):
+        error_handler = logging.StreamHandler()
+        error_handler.setLevel(logging.ERROR)
+        error_handler.setFormatter(formatter)
+        logger.addHandler(error_handler)
 
 class GitLabToGitHubConverter:
     def __init__(self, gitlab_yaml: str, max_attempts: int = 3, debug_file: str | None = None,
@@ -265,7 +270,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-attempts", type=int, default=3, help="Maximum number of attempts to make")
     parser.add_argument("--debug-file", type=str, required=False, help="Path to a file for detailed debug logging")
     parser.add_argument("--provider", type=str, required=False, default=os.getenv("LLM_PROVIDER", "openrouter"), help="LLM provider to use")
-    parser.add_argument("--model", type=str, required=False, default=os.getenv("LLM_MODEL", "openrouter/quasar-alpha"), help="LLM model to use")
+    parser.add_argument("--model", type=str, required=False, default=os.getenv("LLM_MODEL", "openai/o4-mini"), help="LLM model to use")
     parser.add_argument("--thorough", action="store_true", required=False, default=False, help="Regenerate the GitHub YAML if the quality check fails")
     args = parser.parse_args()
 

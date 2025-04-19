@@ -11,7 +11,7 @@ logger = logging.getLogger('gl2gh')
 class BaseAgent:
     prompt_file: str = "changeme.md"
 
-    def __init__(self, model_name: str = "o3-mini", provider: str = "openai"):
+    def __init__(self, model_name: str = "o4-mini", provider: str = "openai"):
         self.model_name = model_name
         self.provider = provider
         self.env = Environment(
