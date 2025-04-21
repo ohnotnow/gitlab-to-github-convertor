@@ -49,7 +49,11 @@ uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml [--max-attempts 3] [--thorou
 
 ### Providers/Models
 
-You can swap between OpenRouter or OpenAI directly by setting a `LLM_PROVIDER` environment variable or passing a `--provider` flag.  You can also specifiy a model names by passing `--thinking-model` and/or `--implementation-model` (or setting `LLM_THINKING_MODEL` / `LLM_IMPLEMENTATION_MODEL`.  For example
+You can swap between OpenRouter or OpenAI directly by setting a `LLM_PROVIDER` environment variable or passing a `--provider` flag.  You can also specifiy a model names by passing `--thinking-model` and/or `--implementation-model` (or setting `LLM_THINKING_MODEL` / `LLM_IMPLEMENTATION_MODEL`.  
+
+The 'thinking' model is used for the stages around planning, debugging - the 'advice' parts.  The 'implementation' model actually writes the new GitHub yaml.
+
+For example:
 
 ```bash
 uv run main.py --gitlab-yaml path/to/.gitlab-ci.yml --provider openrouter --thinking-model "google/gemini-2.5-pro-preview-03-25" --implementation-model=google/gemini-2.5-flash-preview
